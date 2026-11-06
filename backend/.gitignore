@@ -1,0 +1,12 @@
+node_modules
+.env
+
+# File test nháp (debug scripts)
+check.js
+check_data.js
+check_links.js
+check_views.js
+fix_views.js
+test_imports_fetch.js
+test_products.js
+test_products_fetch.js

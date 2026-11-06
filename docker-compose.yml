@@ -1,0 +1,63 @@
+version: '3.9'
+
+# ── WMS Logistics — Docker Compose (Local Dev) ─────────────────────────────
+# Chạy: docker-compose up --build
+# Frontend : http://localhost:3000
+# Backend  : http://localhost:5001
+# Database : Sử dụng Neon PostgreSQL cloud (không cần local DB)
+# ───────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Backend (Express + Prisma) ──────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wms-backend
+    restart: unless-stopped
+    ports:
+      - '5001:5001'
+    environment:
+      PORT: 5001
+      NODE_ENV: development
+      # Thay bằng giá trị thật trong .env hoặc docker-compose.override.yml
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      CORS_ORIGIN: http://localhost:3000
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      ADMIN_ALERT_EMAIL: ${ADMIN_ALERT_EMAIL}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - wms-network
+
+  # ── Frontend (Next.js) ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: wms-frontend
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://backend:5001/api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - wms-network
+
+networks:
+  wms-network:
+    driver: bridge

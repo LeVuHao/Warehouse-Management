@@ -1,0 +1,224 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  username      String         @unique @db.VarChar(80)
+  full_name     String         @db.VarChar(120)
+  email         String?        @unique @db.VarChar(120)
+  password_hash String         @db.VarChar(255)
+  role          String         @default("staff") @db.VarChar(20) // "admin", "staff"
+  is_active     Boolean        @default(true)
+  created_at    DateTime       @default(now()) @db.Timestamp(6)
+
+  // Relations
+  created_imports   ImportReceipt[] @relation("CreatedBy")
+  inspected_imports ImportReceipt[] @relation("InspectedBy")
+  completed_imports ImportReceipt[] @relation("CompletedBy")
+  
+  created_exports   ExportReceipt[] @relation("CreatedBy")
+  approved_exports  ExportReceipt[] @relation("ApprovedBy")
+  refresh_tokens    RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  token      String   @unique @db.VarChar(500)
+  user_id    Int
+  expires_at DateTime @db.Timestamp(6)
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Location {
+  id                Int            @id @default(autoincrement())
+  location_code     String         @unique @db.VarChar(50)
+  name              String         @db.VarChar(200)
+  zone              String         @default("Thực phẩm khô và Nhu yếu phẩm") @db.VarChar(100)
+  max_capacity      Int            @default(1000)
+  current_occupied  Int            @default(0)
+  description       String?        @db.Text
+  is_active         Boolean        @default(true)
+  created_at        DateTime       @default(now()) @db.Timestamp(6)
+
+  // Relations
+  default_products  Product[]      @relation("DefaultLocation")
+  import_details    ImportDetail[]
+
+  @@map("locations")
+}
+
+model Product {
+  id                  Int                    @id @default(autoincrement())
+  product_code        String                 @unique @db.VarChar(50)
+  name                String                 @db.VarChar(200)
+  unit                String?                @db.VarChar(30)
+  category            String?                @db.VarChar(100)
+  description         String?                @db.Text
+  min_stock           Int                    @default(0)
+  unit_price          Decimal?               @db.Decimal(15, 2)
+  location_id         Int?
+  is_active           Boolean                @default(true)
+  min_days_to_sell    Int                    @default(7)
+  expiry_warning_days Int                    @default(30)
+  created_at          DateTime               @default(now()) @db.Timestamp(6)
+
+  // Relations
+  default_location    Location?              @relation("DefaultLocation", fields: [location_id], references: [id], onDelete: SetNull)
+  import_details      ImportDetail[]
+  export_details      ExportDetail[]
+  supplier_prices     SupplierProductPrice[]
+
+  @@map("products")
+}
+
+model Supplier {
+  id             Int                    @id @default(autoincrement())
+  name           String                 @db.VarChar(200)
+  contact_person String?                @db.VarChar(100)
+  phone          String?                @db.VarChar(20)
+  email          String?                @db.VarChar(120)
+  address        String?                @db.Text
+  distance_km    Decimal?               @db.Decimal(8, 1)
+  latitude       Decimal?               @db.Decimal(10, 7)
+  longitude      Decimal?               @db.Decimal(10, 7)
+  is_active      Boolean                @default(true)
+  created_at     DateTime               @default(now()) @db.Timestamp(6)
+
+  // Relations
+  import_receipts ImportReceipt[]
+  export_receipts ExportReceipt[]
+  product_prices  SupplierProductPrice[]
+
+  @@map("suppliers")
+}
+
+model SupplierProductPrice {
+  supplier_id    Int
+  product_id     Int
+  contract_price Decimal  @default(0.0) @db.Decimal(15, 2)
+  lead_time_days Int      @default(2)
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+
+  // Relations
+  supplier       Supplier @relation(fields: [supplier_id], references: [id], onDelete: Cascade)
+  product        Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@id([supplier_id, product_id])
+  @@map("supplier_product_prices")
+}
+
+model ImportReceipt {
+  id                      Int            @id @default(autoincrement())
+  receipt_code            String         @unique @db.VarChar(50)
+  import_date             DateTime       @db.Date
+  supplier_id             Int
+  total_amount            Decimal        @default(0) @db.Decimal(15, 2)
+  status                  String         @default("IN_TRANSIT") @db.VarChar(30)
+  shipping_started_at     DateTime?      @db.Timestamp(6)
+  estimated_arrival_at    DateTime?      @db.Timestamp(6)
+  estimated_delivery_days Int?
+  estimated_arrival_date  DateTime?      @db.Date
+  transport_note          String?        @db.Text
+  actual_arrival_at       DateTime?      @db.Timestamp(6)
+  issue_notes             String?        @db.Text
+  inspected_by            Int?
+  inspected_at            DateTime?      @db.Timestamp(6)
+  completed_by            Int?
+  completed_at            DateTime?      @db.Timestamp(6)
+  note                    String?        @db.Text
+  created_by              Int
+  created_at              DateTime       @default(now()) @db.Timestamp(6)
+
+  // Relations
+  supplier                Supplier       @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
+  creator                 User           @relation("CreatedBy", fields: [created_by], references: [id], onDelete: Restrict)
+  inspector               User?          @relation("InspectedBy", fields: [inspected_by], references: [id], onDelete: SetNull)
+  completer               User?          @relation("CompletedBy", fields: [completed_by], references: [id], onDelete: SetNull)
+  details                 ImportDetail[]
+
+  @@map("import_receipts")
+}
+
+model ImportDetail {
+  id                Int            @id @default(autoincrement())
+  receipt_id        Int
+  product_id        Int
+  quantity          Int
+  expected_quantity Int?
+  received_quantity Int?
+  accepted_quantity Int?
+  rejected_quantity Int?
+  unit_price        Decimal        @default(0) @db.Decimal(15, 2)
+  batch_code        String?        @db.VarChar(100)
+  expiry_date       DateTime?      @db.Date
+  mfg_date          DateTime?      @db.Date
+  location_id       Int?
+  created_at        DateTime       @default(now()) @db.Timestamp(6)
+
+  // Relations
+  import_receipt    ImportReceipt  @relation(fields: [receipt_id], references: [id], onDelete: Cascade)
+  product           Product        @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  lot_location      Location?      @relation(fields: [location_id], references: [id], onDelete: SetNull)
+  export_details    ExportDetail[]
+
+  @@map("import_details")
+}
+
+model ExportReceipt {
+  id               Int            @id @default(autoincrement())
+  receipt_code     String         @unique @db.VarChar(50)
+  export_date      DateTime       @db.Date
+  reason           String         @default("SELL") @db.VarChar(50) // "SELL", "RETURN", "INTERNAL", "DISPOSE"
+  total_amount     Decimal        @default(0) @db.Decimal(15, 2)
+  status           String         @default("COMPLETED") @db.VarChar(20) // "PENDING_APPROVAL", "DELIVERING", "COMPLETED", "CANCELLED"
+  customer_name    String?        @db.VarChar(255)
+  delivery_address String?        @db.VarChar(500)
+  latitude         Decimal?       @db.Decimal(10, 7)
+  longitude        Decimal?       @db.Decimal(10, 7)
+  distance_km      Decimal?       @db.Decimal(8, 1)
+  estimated_delivery_days Int?
+  note             String?        @db.Text
+  supplier_id      Int?
+  approved_by      Int?
+  approved_at      DateTime?      @db.Timestamp(6)
+  rejection_note   String?        @db.Text
+  created_by       Int
+  created_at       DateTime       @default(now()) @db.Timestamp(6)
+
+  // Relations
+  supplier         Supplier?      @relation(fields: [supplier_id], references: [id], onDelete: Restrict)
+  creator          User           @relation("CreatedBy", fields: [created_by], references: [id], onDelete: Restrict)
+  approver         User?          @relation("ApprovedBy", fields: [approved_by], references: [id], onDelete: SetNull)
+  details          ExportDetail[]
+
+  @@map("export_receipts")
+}
+
+model ExportDetail {
+  id               Int          @id @default(autoincrement())
+  receipt_id       Int
+  product_id       Int
+  import_detail_id Int
+  quantity         Int
+  selling_price    Decimal?     @default(0) @db.Decimal(15, 2)
+  created_at       DateTime     @default(now()) @db.Timestamp(6)
+
+  // Relations
+  export_receipt   ExportReceipt @relation(fields: [receipt_id], references: [id], onDelete: Cascade)
+  product          Product       @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  import_detail    ImportDetail  @relation(fields: [import_detail_id], references: [id], onDelete: Restrict)
+
+  @@map("export_details")
+}
