@@ -793,7 +793,14 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
       orderBy: { id: 'asc' },
     });
 
-    // 5. Tính toán các chỉ số Chuỗi cung ứng (Supply Chain Engine)
+    // 5. Xác định bối cảnh Mùa vụ & Chu kỳ ngày trong tuần (Seasonality & Weekend Surge)
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0: CN, 1: T2, ..., 5: T6, 6: T7
+    const isWeekendSurge = dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0; // T5 đến CN
+    const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const currentDayName = dayNames[dayOfWeek];
+
+    // 6. Tính toán các chỉ số Chuỗi cung ứng (Supply Chain Engine)
     const enrichedProducts = lowStockRows.map((row) => {
       const pId = Number(row.product_id);
       const currentStock = Math.max(0, Number(row.current_stock || 0));
@@ -801,9 +808,14 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
       const shortage = Math.max(0, minStock - currentStock);
 
       const exported30d = exportMap.get(pId) || 0;
-      const dailyVelocity = exported30d > 0
+      let baseVelocity = exported30d > 0
         ? Number((exported30d / 30).toFixed(1))
         : Number(Math.max(1, minStock / 10).toFixed(1));
+
+      // Hệ số tăng trưởng nhu cầu theo ngày & mùa vụ
+      const isFreshOrBeverage = row.category === 'Thực phẩm tươi sống' || row.category === 'Đồ uống và bánh kẹo';
+      const demandMultiplier = (isWeekendSurge && isFreshOrBeverage) ? 1.35 : 1.0;
+      const forecastVelocity = Number((baseVelocity * demandMultiplier).toFixed(1));
 
       const bestLink = supplierPrices.find((sp) => sp.product_id === pId);
       const recentImport = recentImports.find((imp) => imp.product_id === pId);
@@ -814,13 +826,13 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
       const leadTimeDays = bestLink?.lead_time_days || 2;
 
       const safetyStock = Math.ceil(minStock * 0.4);
-      const reorderPoint = Math.ceil((dailyVelocity * leadTimeDays) + safetyStock);
-      const runoutDays = dailyVelocity > 0 ? Number((currentStock / dailyVelocity).toFixed(1)) : 999;
+      const reorderPoint = Math.ceil((forecastVelocity * leadTimeDays) + safetyStock);
+      const runoutDays = forecastVelocity > 0 ? Number((currentStock / forecastVelocity).toFixed(1)) : 999;
 
       const suggestedQty = Math.max(
         shortage,
         reorderPoint - currentStock,
-        Math.ceil(dailyVelocity * 14)
+        Math.ceil(forecastVelocity * 14)
       );
 
       let priority = 'medium';
@@ -828,6 +840,11 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
         priority = 'urgent';
       } else if (currentStock < minStock) {
         priority = 'high';
+      }
+
+      let surgeNote = '';
+      if (isWeekendSurge && isFreshOrBeverage) {
+        surgeNote = ` Dự báo cao điểm cuối tuần (${currentDayName}): nhu cầu tăng +35%.`;
       }
 
       return {
@@ -839,7 +856,9 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
         current_stock: currentStock,
         min_stock: minStock,
         shortage,
-        daily_velocity: dailyVelocity,
+        daily_velocity: forecastVelocity,
+        base_velocity: baseVelocity,
+        surge_active: isWeekendSurge && isFreshOrBeverage,
         runout_days: runoutDays,
         lead_time_days: leadTimeDays,
         safety_stock: safetyStock,
@@ -849,16 +868,21 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
         supplier_name: supplierName,
         estimated_price: contractPrice,
         priority,
-        baseline_reason: `Tồn kho ${currentStock}/${minStock} ${row.unit || 'cái'}. Tốc độ bán ${dailyVelocity} ${row.unit || 'cái'}/ngày, dự kiến cạn trong ${runoutDays} ngày.`,
+        baseline_reason: `Tồn kho ${currentStock}/${minStock} ${row.unit || 'cái'}. Tốc độ bán ${forecastVelocity} ${row.unit || 'cái'}/ngày, dự kiến cạn trong ${runoutDays} ngày.${surgeNote}`,
       };
     });
 
-    // 6. Gửi qua AI Service (kết hợp phân tích chuyên sâu của Gemini + Fallback chuẩn)
+    // 7. Gửi qua AI Service (kết hợp phân tích chuyên sâu của Gemini + Fallback chuẩn)
     const suggestions = await getReplenishmentSuggestions(enrichedProducts);
 
     return res.json({
       generated_at: new Date().toISOString(),
       low_stock_count: lowStockRows.length,
+      market_context: {
+        current_day: currentDayName,
+        is_weekend_surge: isWeekendSurge,
+        note: isWeekendSurge ? 'Áp dụng hệ số đón đầu cao điểm cuối tuần (+35% cho thực phẩm & đồ uống)' : 'Áp dụng chu kỳ bán hàng ngày thường ổn định',
+      },
       suggestions,
     });
   } catch (error) {

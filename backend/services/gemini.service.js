@@ -13,12 +13,13 @@ async function getReplenishmentSuggestions(enrichedProducts, importHistory = [])
   const computeFallback = () => {
     return enrichedProducts.map((p) => {
       let dynamicReason = '';
+      const surgeText = p.surge_active ? ' (Bao gồm +35% dự trữ đón đầu đợt mua sắm cao điểm cuối tuần)' : '';
       if (p.priority === 'urgent') {
-        dynamicReason = `Tồn kho cạn kiệt (${p.current_stock} ${p.unit}). Với tốc độ xuất ${p.daily_velocity} ${p.unit}/ngày, dự kiến cạn kho trong ${p.runout_days} ngày. Trong khi NCC ${p.supplier_name} mất ${p.lead_time_days} ngày giao. Cần nhập gấp ${p.suggested_qty} ${p.unit} để tránh đứt gãy chuỗi cung ứng.`;
+        dynamicReason = `Tồn kho cạn kiệt (${p.current_stock} ${p.unit}). Với tốc độ xuất ${p.daily_velocity} ${p.unit}/ngày, dự kiến cạn kho trong ${p.runout_days} ngày. Trong khi NCC ${p.supplier_name} mất ${p.lead_time_days} ngày giao. Cần nhập gấp ${p.suggested_qty} ${p.unit} để tránh đứt gãy chuỗi cung ứng.${surgeText}`;
       } else if (p.priority === 'high') {
-        dynamicReason = `Tồn kho thấp hơn mức an toàn (${p.current_stock}/${p.min_stock} ${p.unit}). Tốc độ tiêu thụ ổn định ${p.daily_velocity} ${p.unit}/ngày. Đề xuất nhập ${p.suggested_qty} ${p.unit} từ ${p.supplier_name} để duy trì chu kỳ bán 14 ngày tới.`;
+        dynamicReason = `Tồn kho thấp hơn mức an toàn (${p.current_stock}/${p.min_stock} ${p.unit}). Tốc độ tiêu thụ ổn định ${p.daily_velocity} ${p.unit}/ngày. Đề xuất nhập ${p.suggested_qty} ${p.unit} từ ${p.supplier_name} để duy trì chu kỳ bán 14 ngày tới.${surgeText}`;
       } else {
-        dynamicReason = `Tồn kho tiệm cận điểm đặt hàng lại (ROP = ${p.reorder_point} ${p.unit}). Đề xuất bổ sung dự phòng ${p.suggested_qty} ${p.unit} theo kế hoạch định kỳ.`;
+        dynamicReason = `Tồn kho tiệm cận điểm đặt hàng lại (ROP = ${p.reorder_point} ${p.unit}). Đề xuất bổ sung dự phòng ${p.suggested_qty} ${p.unit} theo kế hoạch định kỳ.${surgeText}`;
       }
 
       return {
@@ -55,24 +56,24 @@ Dưới đây là bảng phân tích tồn kho và các chỉ số chuỗi cung 
 
 --- DỮ LIỆU SẢN PHẨM & TỒN KHO THỰC TẾ ---
 ${JSON.stringify(
-  enrichedProducts.map((p) => ({
-    product_id: p.product_id,
-    product_code: p.product_code,
-    product_name: p.product_name,
-    unit: p.unit,
-    current_stock: p.current_stock,
-    min_stock: p.min_stock,
-    daily_velocity: `${p.daily_velocity} ${p.unit}/ngày`,
-    estimated_runout_days: `${p.runout_days} ngày`,
-    preferred_supplier: p.supplier_name,
-    contract_price: p.estimated_price,
-    lead_time_days: `${p.lead_time_days} ngày`,
-    suggested_qty_by_algo: p.suggested_qty,
-    priority: p.priority,
-  })),
-  null,
-  2
-)}
+    enrichedProducts.map((p) => ({
+      product_id: p.product_id,
+      product_code: p.product_code,
+      product_name: p.product_name,
+      unit: p.unit,
+      current_stock: p.current_stock,
+      min_stock: p.min_stock,
+      daily_velocity: `${p.daily_velocity} ${p.unit}/ngày`,
+      estimated_runout_days: `${p.runout_days} ngày`,
+      preferred_supplier: p.supplier_name,
+      contract_price: p.estimated_price,
+      lead_time_days: `${p.lead_time_days} ngày`,
+      suggested_qty_by_algo: p.suggested_qty,
+      priority: p.priority,
+    })),
+    null,
+    2
+  )}
 
 Yêu cầu chuyên môn:
 1. Đánh giá số lượng đặt hàng đề xuất (suggested_qty). Giữ nguyên hoặc điều chỉnh hợp lý dựa trên tốc độ tiêu thụ và thời gian giao hàng.

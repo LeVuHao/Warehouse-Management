@@ -27,6 +27,7 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { io } from 'socket.io-client';
 import GlobalDialog from '@/components/GlobalDialog';
+import AICopilotWidget from '@/components/AICopilotWidget';
 
 export default function DashboardLayout({ children }) {
   const { isAuthenticated, isLoading, user, logout } = useAuthStore();
@@ -57,8 +58,10 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-    document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    queueMicrotask(() => {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    });
   }, []);
 
   useEffect(() => {
@@ -155,7 +158,7 @@ export default function DashboardLayout({ children }) {
     );
   }
 
-  const Sidebar = ({ mobile = false }) => (
+  const renderSidebar = (mobile = false) => (
     <aside
       className={`bg-gray-50 text-gray-700 shadow-xl dark:bg-slate-950 dark:text-slate-200 print:hidden ${
         mobile
@@ -204,7 +207,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="min-h-screen wms-shell text-slate-900 dark:text-slate-100">
-      <Sidebar />
+      {renderSidebar(false)}
 
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden print:hidden">
@@ -215,7 +218,7 @@ export default function DashboardLayout({ children }) {
           />
           {/* Sidebar Drawer */}
           <div className="relative z-50 flex h-full">
-            <Sidebar mobile />
+            {renderSidebar(true)}
             <button
               type="button"
               onClick={() => setIsSidebarOpen(false)}
@@ -395,6 +398,7 @@ export default function DashboardLayout({ children }) {
 
         <main className="min-w-0 flex-1 p-4 md:p-6">
           <GlobalDialog />
+          <AICopilotWidget />
           {children}
         </main>
       </div>
