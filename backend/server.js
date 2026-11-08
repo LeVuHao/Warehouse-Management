@@ -111,7 +111,7 @@ async function startServer() {
     console.error('Failed to prepare stock views:', error);
   }
 
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
   });
 }
