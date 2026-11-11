@@ -846,9 +846,9 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
       
       let leadTimeDays = bestLink?.lead_time_days || 2;
       if (isStormScenario && (supplierName.includes('Đà Lạt') || supplierName.includes('Lâm Đồng') || supplierName.includes('Trung'))) {
-        leadTimeDays += 3; // Sạt lở đèo Bảo Lộc trễ 3 ngày
+        leadTimeDays += 3; // Mưa bão sạt lở đèo Bảo Lộc trễ 3 ngày
       } else if (isStormScenario) {
-        leadTimeDays += 1;
+        leadTimeDays += 1; // Triều cường / mưa ngập cục bộ các tuyến liên tỉnh trễ 1 ngày
       }
 
       const safetyMultiplier = isStormScenario ? 1.6 : (isWeekendScenario ? 1.3 : 1.0);
@@ -871,7 +871,7 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
 
       let surgeNote = '';
       if (isStormScenario) {
-        surgeNote = ` Cảnh báo Bão số 3 (Sạt lở đèo Bảo Lộc): Lead time +${leadTimeDays - 2} ngày, tồn an toàn nâng x1.6.`;
+        surgeNote = ` Cảnh báo Thời tiết xấu & Triều cường ngập úng: Lead time +${leadTimeDays - 2} ngày, tồn an toàn nâng x1.6.`;
       } else if (isWeekendScenario && isFreshOrBeverage) {
         surgeNote = ` Dự báo cao điểm cuối tuần (${currentDayName}): nhu cầu tăng +40%.`;
       }
@@ -913,7 +913,7 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
         is_weekend_surge: isWeekendScenario,
         is_storm_scenario: isStormScenario,
         note: isStormScenario
-          ? 'Áp dụng kịch bản khẩn cấp: Bão số 3 (Sạt lở đèo Bảo Lộc, Lead time +3 ngày, Tồn an toàn x1.6)'
+          ? 'Áp dụng kịch bản khẩn cấp: Thời tiết xấu & Triều cường ngập úng Nam Bộ (Lead time +1 đến +3 ngày, Tồn an toàn x1.6)'
           : isWeekendScenario
           ? 'Áp dụng hệ số đón đầu cao điểm cuối tuần (+40% cho thực phẩm & đồ uống)'
           : 'Áp dụng chu kỳ bán hàng ngày thường ổn định',

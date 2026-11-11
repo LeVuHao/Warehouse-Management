@@ -24,28 +24,47 @@ import {
 import api from '@/lib/api';
 import { useScenarioStore, SCENARIO_CONFIGS } from '@/store/useScenarioStore';
 
+const buildWelcomeMessage = (cfg) => ({
+  id: 'welcome',
+  sender: 'bot',
+  text: `👋 **Xin chào! Tôi là Trợ lý AI Thủ kho (WMS Copilot).**\n\n🌦️ **Điểm tin thời tiết & vận tải:**\n${cfg?.weatherBriefing || 'Thời tiết ổn định, các tuyến vận tải hoạt động bình thường.'}\n\nBạn có thể hỏi tôi bất kỳ điều gì: tra cứu tồn kho, tìm số lô hạn dùng FEFO, hoặc tư vấn kịch bản rủi ro thời tiết, mùa vụ!`,
+  time: 'Vừa xong',
+  suggestions: cfg?.suggestedQuestions || [
+    'Báo cáo nhanh tồn kho hôm nay',
+    'Lô hàng nào sắp hết hạn trong 30 ngày?',
+    'Tồn kho bia Tiger và thịt CP thế nào?',
+    'Tư vấn rủi ro chuỗi cung ứng',
+  ],
+  actions: [],
+});
+
 export default function AICopilotWidget() {
   const router = useRouter();
   const { currentScenario, config } = useScenarioStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      id: 'welcome',
-      sender: 'bot',
-      text: `👋 **Xin chào! Tôi là Trợ lý AI Thủ kho (WMS Copilot).**\n\nTôi được kết nối trực tiếp với **Cơ sở dữ liệu kho hàng thời gian thực** và **Bộ giả lập bối cảnh Logistics Việt Nam**.\n\nBạn có thể hỏi tôi bất kỳ điều gì: tra cứu tồn kho, tìm số lô hạn dùng FEFO, hoặc tư vấn kịch bản rủi ro mưa bão, mùa vụ!`,
-      time: 'Vừa xong',
-      suggestions: [
-        'Báo cáo nhanh tồn kho hôm nay',
-        'Lô hàng nào sắp hết hạn trong 30 ngày?',
-        'Tồn kho bia Tiger và thịt CP thế nào?',
-        'Tư vấn rủi ro chuỗi cung ứng',
-      ],
-      actions: [],
-    },
-  ]);
+  const [messages, setMessages] = useState(() => [buildWelcomeMessage(config)]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const prevScenarioRef = useRef(currentScenario);
+
+  // Lắng nghe khi người dùng chuyển kịch bản giả lập
+  useEffect(() => {
+    if (prevScenarioRef.current !== currentScenario) {
+      prevScenarioRef.current = currentScenario;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `scenario-switch-${Date.now()}`,
+          sender: 'bot',
+          text: `🔄 **Cập nhật kịch bản:** Hệ thống đã chuyển sang **${config.label}**.\n\n🌦️ **Điểm tin thời tiết:**\n${config.weatherBriefing}`,
+          time: 'Vừa xong',
+          suggestions: config.suggestedQuestions || [],
+          actions: [],
+        },
+      ]);
+    }
+  }, [currentScenario, config]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -127,7 +146,7 @@ export default function AICopilotWidget() {
       {
         id: 'reset-msg',
         sender: 'bot',
-        text: `Cuộc trò chuyện đã được làm mới. Hệ thống hiện đang chạy theo kịch bản: **${config.label}**. Bạn cần tra cứu điều gì tiếp theo?`,
+        text: `Cuộc trò chuyện đã được làm mới theo kịch bản: **${config.label}**.\n\n🌦️ **Điểm tin thời tiết & vận tải:**\n${config.weatherBriefing}\n\nBạn cần tra cứu điều gì tiếp theo?`,
         time: 'Vừa xong',
         suggestions: config.suggestedQuestions || [
           'Báo cáo nhanh tồn kho hôm nay',
@@ -250,6 +269,25 @@ export default function AICopilotWidget() {
             <span className="text-[10px] text-purple-600 dark:text-purple-400 font-mono">
               Lead time x{config.leadTimeMultiplier}
             </span>
+          </div>
+
+          {/* Radar Thời tiết & Vận tải (Điểm tin tự động 2-3 câu) */}
+          <div className="border-b border-purple-500/10 bg-slate-50/90 px-3.5 py-2 text-[11px] leading-relaxed dark:bg-slate-950/50 text-slate-600 dark:text-slate-300 flex items-start gap-2 shadow-inner">
+            <div className="mt-0.5 shrink-0">
+              {currentScenario === 'STORM_CENTRAL' ? (
+                <CloudRain className="h-4 w-4 text-amber-500 animate-pulse" />
+              ) : currentScenario === 'WEEKEND_PEAK' ? (
+                <Sparkles className="h-4 w-4 text-purple-500" />
+              ) : (
+                <Sun className="h-4 w-4 text-emerald-500" />
+              )}
+            </div>
+            <div className="flex-1">
+              <span className="font-semibold text-slate-900 dark:text-slate-100 mr-1">
+                Radar Thời tiết:
+              </span>
+              <span>{config.weatherBriefing}</span>
+            </div>
           </div>
 
           {/* Quick Prompts Bar */}

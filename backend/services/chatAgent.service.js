@@ -150,20 +150,33 @@ function getSupplyChainExternalContext(scenario = 'NORMAL') {
   const isStormScenario = scenario === 'STORM_CENTRAL';
   const isWeekendScenario = scenario === 'WEEKEND_PEAK' || (!isStormScenario && isWeekend);
 
-  let scenarioDescription = 'Vận hành tiêu chuẩn. Các tuyến vận tải và nhà cung cấp hoạt động bình thường.';
+  const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+  const dayName = dayNames[dayOfWeek];
+
+  let scenarioDescription = 'Vận hành tiêu chuẩn. Thời tiết ổn định, các tuyến vận tải và nhà cung cấp hoạt động bình thường.';
+  let weatherBriefing = 'Thời tiết khu vực Nam Bộ và các hành lang vận chuyển chính hiện tại tương đối thuận lợi, không có cảnh báo triều cường hay mưa dông lớn. Các tuyến vận chuyển đang lưu thông đúng tiến độ.';
+
   let corridors = [
     {
       route: 'Lâm Đồng (Đà Lạt) ➔ TP.HCM',
       products: 'Rau cải, xà lách, cà chua beef organic',
-      risk_level: isStormScenario ? '🔴 KHẨN CẤP: Chậm 3-4 ngày do sạt lở đèo Bảo Lộc' : 'Cảnh báo chậm 1-2 ngày',
+      risk_level: isStormScenario ? '🔴 KHẨN CẤP: Chậm 2-3 ngày do sạt lở đèo Bảo Lộc / QL20' : 'Cảnh báo chậm 1-2 ngày',
       reason: isStormScenario
-        ? 'Bão số 3 gây sạt lở nghiêm trọng đèo Bảo Lộc / QL20. Tuyến đường bị cô lập tạm thời, xe tải buộc phải đi đường vòng ĐT725 làm kéo dài Lead Time +3 ngày.'
+        ? 'Mưa dông lớn gây sạt lở nghiêm trọng đèo Bảo Lộc / QL20. Tuyến đường bị cô lập tạm thời, xe tải buộc phải đi đường vòng ĐT725 làm kéo dài Lead Time +3 ngày.'
         : 'Tuyến đèo Bảo Lộc / QL20 thường ùn ứ vào mùa mưa. Duy trì tồn an toàn 2 ngày.',
+    },
+    {
+      route: 'Đồng bằng Sông Cửu Long (Long An, Tiền Giang) ➔ TP.HCM',
+      products: 'Gạo ST25, trái cây, nông sản miền Tây',
+      risk_level: isStormScenario ? '🟡 Chậm 1-2 ngày (Triều cường / Mưa ngập QL1A)' : 'Ổn định',
+      reason: isStormScenario
+        ? 'Triều cường dâng cao kết hợp mưa lớn làm ngập nhiều điểm trên QL1A và cửa ngõ phía Tây TP.HCM, xe tải giao chậm 1-2 ngày.'
+        : 'Hành lang vận tải miền Tây thông suốt, thời gian giao hàng chuẩn 1-2 ngày.',
     },
     {
       route: 'Đồng Nai (Biên Hòa) ➔ TP.HCM',
       products: 'Thịt heo CP, gà CP, xúc xích',
-      risk_level: isStormScenario ? '🟡 Cần chú ý (Mưa ngập)' : 'Ổn định',
+      risk_level: isStormScenario ? '🟡 Cần chú ý (Mưa ngập cục bộ)' : 'Ổn định',
       reason: isStormScenario
         ? 'Mưa ngập một số đoạn QL1A và Xa lộ Hà Nội, thời gian giao hàng tăng thêm 0.5 - 1 ngày. Khuyến nghị nhập bù trữ kho ngay.'
         : 'Khoảng cách gần (~31km qua Xa lộ Hà Nội), thời gian giao chuẩn 1-2 ngày.',
@@ -177,18 +190,22 @@ function getSupplyChainExternalContext(scenario = 'NORMAL') {
   ];
 
   if (isStormScenario) {
-    scenarioDescription = '⚠️ KỊCH BẢN KHẨN CẤP - BÃO LŨ MIỀN TRUNG: Sạt lở đèo Bảo Lộc và ngập lụt QL1A. Nguồn cung rau củ từ Đà Lạt bị đứt đoạn. Tồn kho an toàn thực phẩm thiết yếu tự động nâng x1.5.';
+    scenarioDescription = '⚠️ KỊCH BẢN THỜI TIẾT XẤU & NGẬP LỤT: Mưa lớn diện rộng, triều cường ngập úng tại TP.HCM/Miền Tây và nguy cơ sạt lở đèo Bảo Lộc. Nguồn cung liên tỉnh trễ 2-3 ngày. Tồn kho an toàn thực phẩm thiết yếu tự động nâng x1.5.';
+    weatherBriefing = 'Cảnh báo thời tiết xấu: Khu vực Nam Bộ và Miền Tây đang chịu ảnh hưởng mưa dông diện rộng kết hợp triều cường ngập úng nhiều tuyến đường huyết mạch; tuyến đèo Đà Lạt - Lâm Đồng tiềm ẩn nguy cơ sạt lở. Lead time giao hàng dự kiến trễ 2-3 ngày, khuyến nghị ưu tiên nhập dự phòng thực phẩm thiết yếu.';
   } else if (isWeekendScenario) {
     scenarioDescription = '🎉 KỊCH BẢN CAO ĐIỂM CUỐI TUẦN & LỄ HỘI: Nhu cầu tiêu thụ bia, nước giải khát, thịt BBQ tăng mạnh (+35% đến +50%). Tự động kích hoạt điểm đặt hàng lại ROP tăng cường.';
+    weatherBriefing = 'Dự báo cuối tuần thời tiết đẹp, thuận lợi cho hoạt động dã ngoại và mua sắm gia đình. Sức mua nhóm đồ uống, bia và thực phẩm tươi sống dự kiến tăng vọt +35% đến +50%.';
   }
 
   return {
     scenario,
-    scenario_title: isStormScenario ? 'Mưa bão miền Trung' : isWeekendScenario ? 'Cao điểm Cuối tuần' : 'Ngày thường',
+    scenario_title: isStormScenario ? 'Thời tiết xấu, Mưa bão & Ngập lụt' : isWeekendScenario ? 'Cao điểm Cuối tuần' : 'Ngày thường',
     current_time: now.toLocaleString('vi-VN'),
+    day_name: dayName,
     is_storm_scenario: isStormScenario,
     is_weekend_surge: isWeekendScenario,
     seasonal_factors: scenarioDescription,
+    weather_briefing: weatherBriefing,
     corridors,
   };
 }
@@ -218,24 +235,24 @@ async function processChatMessage({ message, history = [], user = {}, scenario =
   // Sinh các nút hành động 1-Click (Actionable execution) dựa trên dữ liệu thật
   const actions = [];
 
-  // Hành động 1: Nếu có kịch bản bão hoặc tồn kho thấp, đề xuất nhập dự phòng ngay
+  // Hành động 1: Nếu có kịch bản bão/thời tiết xấu hoặc tồn kho thấp, đề xuất nhập dự phòng ngay
   if (scenario === 'STORM_CENTRAL' || overview.low_stock_count > 0 || scenario === 'WEEKEND_PEAK') {
     actions.push({
       id: 'act-import-replenish',
       type: 'create_import',
       title: scenario === 'STORM_CENTRAL' 
-        ? '⚡ Tạo phiếu nhập hàng dự phòng bão lũ' 
+        ? '⚡ Tạo phiếu nhập hàng dự phòng thời tiết xấu' 
         : scenario === 'WEEKEND_PEAK'
         ? '⚡ Tạo phiếu nhập tăng cường cuối tuần'
         : '⚡ Tạo phiếu nhập hàng bổ sung tồn kho',
       description: scenario === 'STORM_CENTRAL'
-        ? 'Tự động tạo phiếu nhập từ NCC gần (CP Food Đồng Nai) để bù nguồn cung đèo Bảo Lộc'
+        ? 'Tự động tạo phiếu nhập từ NCC gần (CP Food Đồng Nai) để bù nguồn cung đèo Bảo Lộc và phòng ngừa ngập úng'
         : 'Tự động tạo phiếu nhập theo định mức ROP đã được tối ưu hóa',
       draftData: {
         supplierId: '1',
         supplierName: 'Công ty Cổ phần Chăn nuôi C.P. Việt Nam',
         note: scenario === 'STORM_CENTRAL' 
-          ? 'Phiếu nhập dự phòng bão lũ miền Trung (Hệ số an toàn x1.5) - Tự động bởi AI Copilot'
+          ? 'Phiếu nhập dự phòng thời tiết xấu & ngập lụt (Hệ số an toàn x1.5) - Tự động bởi AI Copilot'
           : 'Phiếu nhập bổ sung cao điểm cuối tuần - Tự động bởi AI Copilot',
         items: [
           { productId: 1, productName: 'Thịt heo tươi CP (Thịt ba rọi)', quantity: '150', price: '135000' },
@@ -289,13 +306,15 @@ Bạn có quyền truy cập trực tiếp vào hệ thống dữ liệu thời 
 --- TRI THỨC BỐI CẢNH NGOẠI CẢNH & THỊ TRƯỜNG VIỆT NAM ---
 - Hôm nay: ${externalContext.day_name} (${externalContext.current_time})
 - Đánh giá chu kỳ: ${externalContext.seasonal_factors}
+- Điểm tin thời tiết & vận tải hiện tại: ${externalContext.weather_briefing}
 - Tuyến đường vận chuyển: ${JSON.stringify(externalContext.corridors)}
 
 Yêu cầu trả lời:
 1. Trả lời trực tiếp, rõ ràng, thân thiện bằng tiếng Việt.
 2. Dẫn chứng số liệu thật từ context ở trên (tên SP, số lượng tồn, mã lô, hạn dùng, tên nhà cung cấp, vị trí kệ). Tuyệt đối không bịa số liệu.
-3. Nếu người dùng hỏi về thời tiết, rủi ro, vận chuyển hoặc mùa vụ, hãy kết hợp tri thức chuỗi cung ứng ở trên để tư vấn chiến lược.
-4. Trình bày bằng Markdown đẹp mắt (sử dụng in đậm, danh sách gạch đầu dòng, icon trực quan).
+3. Luôn lồng ghép 1-2 câu nhận định ngắn gọn, tinh tế về bối cảnh thời tiết và tác động vận chuyển hiện tại (${externalContext.weather_briefing}) vào câu trả lời để thủ kho chủ động phương án.
+4. Nếu người dùng hỏi về thời tiết, rủi ro, bão lũ, ngập lụt hoặc mùa vụ, hãy phân tích chi tiết các tuyến vận tải (Đà Lạt/Lâm Đồng, Miền Tây, Đồng Nai, Nội thành TP.HCM) và tư vấn phương án dự phòng.
+5. Trình bày bằng Markdown đẹp mắt (sử dụng in đậm, danh sách gạch đầu dòng, icon trực quan).
 `;
 
       const chat = model.startChat({
@@ -313,6 +332,7 @@ Yêu cầu trả lời:
         reply,
         scenario: externalContext.scenario,
         scenario_title: externalContext.scenario_title,
+        weather_briefing: externalContext.weather_briefing,
         data_context: {
           matched_products: searchResults.length,
           expiring_lots: expiringLots.length,
@@ -339,9 +359,10 @@ Yêu cầu trả lời:
   if (lowerMsg.includes('hạn') || lowerMsg.includes('hết hạn') || lowerMsg.includes('date') || lowerMsg.includes('lô')) {
     if (expiringLots.length === 0) {
       return {
-        reply: `✅ **Kho hàng đang rất an toàn!** Hiện tại không có lô hàng nào cận hạn sử dụng trong vòng 30 ngày tới theo chiến lược xuất hàng **FEFO**.`,
+        reply: `✅ **Kho hàng đang rất an toàn!** Hiện tại không có lô hàng nào cận hạn sử dụng trong vòng 30 ngày tới theo chiến lược xuất hàng **FEFO**.\n\n🌦️ *Ghi chú thời tiết:* ${externalContext.weather_briefing}`,
         actions,
         scenario: externalContext.scenario,
+        weather_briefing: externalContext.weather_briefing,
         suggestions: ['Báo cáo tồn kho hiện tại', 'Đề xuất bổ sung hàng', 'Xem sơ đồ kệ kho'],
       };
     }
@@ -351,23 +372,31 @@ Yêu cầu trả lời:
     ).join('\n\n');
 
     return {
-      reply: `⚠️ **Phát hiện ${expiringLots.length} lô hàng cận hạn sử dụng trong 30 ngày tới:**\n\n${lotList}\n\n💡 *Khuyến nghị:* Theo quy trình **FEFO**, hệ thống đã tự động ưu tiên xuất các lô này trước trên màn hình Lập phiếu xuất để hạn chế tối đa hư hao. Bạn có thể bấm nút hành động 1-Click bên dưới để lập phiếu xả hàng ngay.`,
+      reply: `⚠️ **Phát hiện ${expiringLots.length} lô hàng cận hạn sử dụng trong 30 ngày tới:**\n\n${lotList}\n\n💡 *Khuyến nghị:* Theo quy trình **FEFO**, hệ thống đã tự động ưu tiên xuất các lô này trước trên màn hình Lập phiếu xuất để hạn chế tối đa hư hao. Bạn có thể bấm nút hành động 1-Click bên dưới để lập phiếu xả hàng ngay.\n\n🌦️ *Ghi chú thời tiết:* ${externalContext.weather_briefing}`,
       actions,
       scenario: externalContext.scenario,
+      weather_briefing: externalContext.weather_briefing,
       suggestions: ['Tạo phiếu xuất xả hàng', 'Kiểm tra tồn kho tổng thể', 'Đề xuất nhập hàng'],
     };
   }
 
-  // Nhánh 2: Hỏi về rủi ro thời tiết, mùa vụ, bão lũ, cuối tuần
-  if (lowerMsg.includes('thời tiết') || lowerMsg.includes('bão') || lowerMsg.includes('mưa') || lowerMsg.includes('rủi ro') || lowerMsg.includes('cuối tuần') || lowerMsg.includes('mùa vụ')) {
+  // Nhánh 2: Hỏi về rủi ro thời tiết, mùa vụ, bão lũ, ngập úng, hạn hán, cuối tuần
+  if (lowerMsg.includes('thời tiết') || lowerMsg.includes('bão') || lowerMsg.includes('mưa') || lowerMsg.includes('ngập') || lowerMsg.includes('hạn hán') || lowerMsg.includes('rủi ro') || lowerMsg.includes('cuối tuần') || lowerMsg.includes('mùa vụ')) {
     const corridorInfo = externalContext.corridors.map((c) => 
       `• **${c.route}** (${c.products}):\n  - Trạng thái: **${c.risk_level}**\n  - Đánh giá: *${c.reason}*`
     ).join('\n\n');
 
     return {
-      reply: `🌦️ **Phân tích Rủi ro Chuỗi cung ứng & Bối cảnh Ngoại cảnh [${externalContext.scenario_title}]:**\n\n📅 **Trạng thái:** ${externalContext.seasonal_factors}\n\n🚛 **Tình hình các hành lang vận chuyển chính:**\n${corridorInfo}\n\n💡 **Chiến lược đề xuất của AI:**\n1. Kích hoạt mức tồn an toàn cao hơn cho nhóm Rau củ quả và Thực phẩm tươi sống.\n2. Tận dụng các nhà cung ứng gần trong TP.HCM (Vinamilk, Acecook, Masan) để bổ sung nhanh trong 24h nếu tuyến liên tỉnh bị gián đoạn.\n3. Bạn có thể bấm nút hành động 1-Click bên dưới để tự động tạo phiếu nhập kho khẩn cấp.`,
+      reply: `🌦️ **Phân tích Rủi ro Thời tiết & Chuỗi Cung ứng [${externalContext.scenario_title}]:**\n\n` +
+        `🌤️ **Điểm tin thời tiết:** ${externalContext.weather_briefing}\n\n` +
+        `🚛 **Tình hình các hành lang vận chuyển chính:**\n${corridorInfo}\n\n` +
+        `💡 **Chiến lược đề xuất của AI:**\n` +
+        `1. Kích hoạt mức tồn an toàn cao hơn cho nhóm Rau củ quả, Thực phẩm tươi sống và nhu yếu phẩm.\n` +
+        `2. Tận dụng các nhà cung ứng gần trong nội thành TP.HCM (Vinamilk, Acecook, Masan) để bổ sung nhanh trong 24h nếu tuyến liên tỉnh bị ngập úng hoặc gián đoạn.\n` +
+        `3. Bạn có thể bấm nút hành động 1-Click bên dưới để tự động tạo phiếu nhập kho khẩn cấp.`,
       actions,
       scenario: externalContext.scenario,
+      weather_briefing: externalContext.weather_briefing,
       suggestions: ['Xem đề xuất bổ sung hàng AI', 'Kiểm tra nhà cung cấp trên bản đồ', 'Báo cáo tồn kho'],
     };
   }
@@ -383,9 +412,10 @@ Yêu cầu trả lời:
     }).join('\n\n');
 
     return {
-      reply: `🔍 **Kết quả tra cứu sản phẩm trong kho:**\n\n${productCards}\n\nBạn có muốn tôi kiểm tra số lô chi tiết hoặc lập kế hoạch đặt thêm hàng không?`,
+      reply: `🔍 **Kết quả tra cứu sản phẩm trong kho:**\n\n${productCards}\n\n🌦️ *Tình hình vận tải:* ${externalContext.weather_briefing}\n\nBạn có muốn tôi kiểm tra số lô chi tiết hoặc lập kế hoạch đặt thêm hàng không?`,
       actions,
       scenario: externalContext.scenario,
+      weather_briefing: externalContext.weather_briefing,
       suggestions: ['Lập phiếu nhập cho sản phẩm này', 'Xem hạn sử dụng các lô', 'Kiểm tra toàn bộ kho'],
     };
   }
@@ -398,22 +428,27 @@ Yêu cầu trả lời:
         `• Mạng lưới đối tác: **${overview.total_suppliers} nhà cung cấp**\n` +
         `• Cảnh báo tồn thấp: **${overview.low_stock_count} mặt hàng** cần bổ sung\n` +
         `• Cảnh báo hạn dùng: **${overview.expiring_lots_count} lô hàng** cận date trong 30 ngày\n\n` +
+        `🌦️ **Điểm tin thời tiết & vận tải:** ${externalContext.weather_briefing}\n\n` +
         `💡 *Đang ở kịch bản:* ${externalContext.seasonal_factors}`,
       actions,
       scenario: externalContext.scenario,
+      weather_briefing: externalContext.weather_briefing,
       suggestions: ['Gợi ý bổ sung hàng tự động', 'Kiểm tra hàng cận hạn', 'Xem bản đồ nhà cung cấp'],
     };
   }
 
   // Mặc định: Phản hồi hướng dẫn
   return {
-    reply: `👋 **Xin chào! Tôi là Trợ lý AI Thủ kho (WMS Copilot) [Kịch bản: ${externalContext.scenario_title}].**\n\nTôi có thể hỗ trợ bạn:\n` +
+    reply: `👋 **Xin chào! Tôi là Trợ lý AI Thủ kho (WMS Copilot) [Kịch bản: ${externalContext.scenario_title}].**\n\n` +
+      `🌦️ **Điểm tin thời tiết & vận tải:**\n${externalContext.weather_briefing}\n\n` +
+      `Tôi có thể hỗ trợ bạn:\n` +
       `1. 📦 **Tra cứu tức thì:** Hỏi số lượng tồn, vị trí kệ của bất kỳ mặt hàng nào (ví dụ: *"Bia Tiger còn bao nhiêu?", "Thịt heo CP ở kệ nào?"*).\n` +
       `2. ⚠️ **Kiểm tra hạn sử dụng:** Lọc các lô hàng cận hạn theo thuật toán FEFO.\n` +
-      `3. 🌦️ **Tư vấn chuỗi cung ứng:** Đánh giá rủi ro thời tiết, sạt lở đèo, chu kỳ mua sắm cuối tuần.\n` +
+      `3. 🌦️ **Tư vấn chuỗi cung ứng:** Đánh giá rủi ro thời tiết (mưa dông, ngập úng triều cường Nam Bộ, sạt lở đèo), chu kỳ mua sắm cuối tuần.\n` +
       `4. ⚡ **Hành động 1-Click:** Tự động điền và tạo phiếu nhập/xuất kho ngay trong khung chat.`,
     actions,
     scenario: externalContext.scenario,
+    weather_briefing: externalContext.weather_briefing,
     suggestions: ['Báo cáo nhanh tồn kho hôm nay', 'Lô hàng nào sắp hết hạn trong 30 ngày?', 'Tư vấn rủi ro chuỗi cung ứng', 'Tồn kho bia Tiger và mì Hảo Hảo'],
   };
 }

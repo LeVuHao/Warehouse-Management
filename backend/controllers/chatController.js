@@ -34,8 +34,9 @@ exports.sendMessage = async (req, res) => {
 // GET /api/chat/overview — Báo cáo nhanh tình hình kho
 exports.getOverview = async (req, res) => {
   try {
+    const scenario = req.query.scenario || req.headers['x-scenario'] || 'NORMAL';
     const overview = await getWarehouseOverview();
-    const external = getSupplyChainExternalContext();
+    const external = getSupplyChainExternalContext(scenario);
 
     return res.json({
       overview,

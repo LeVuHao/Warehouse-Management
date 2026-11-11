@@ -3,16 +3,17 @@ import { create } from 'zustand';
 export const SCENARIO_CONFIGS = {
   NORMAL: {
     id: 'NORMAL',
-    label: 'Ngày thường (Chuẩn)',
-    shortLabel: 'Bình thường',
+    label: 'Ngày thường (Thời tiết ổn định)',
+    shortLabel: 'Thời tiết ổn định',
     icon: 'Sun',
-    desc: 'Vận hành tiêu chuẩn theo định mức ROP & FEFO.',
+    desc: 'Vận hành tiêu chuẩn theo định mức ROP & FEFO. Thời tiết thuận lợi.',
+    weatherBriefing: 'Khu vực Nam Bộ và các tuyến hành lang logistics thời tiết thuận lợi, không có cảnh báo triều cường hay mưa dông lớn. Tuyến vận chuyển từ các nhà cung ứng lưu thông đúng lịch trình.',
     leadTimeMultiplier: 1.0,
     demandMultiplier: 1.0,
     safetyStockMultiplier: 1.0,
     badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     accentColor: 'emerald',
-    bannerText: 'Vận hành tiêu chuẩn. Các tuyến vận tải và nhà cung cấp hoạt động bình thường.',
+    bannerText: 'Vận hành tiêu chuẩn. Thời tiết ổn định, các tuyến vận tải và nhà cung cấp hoạt động bình thường.',
     suggestedQuestions: [
       'Báo cáo nhanh tồn kho hôm nay',
       'Lô hàng nào sắp hết hạn trong 30 ngày?',
@@ -21,19 +22,20 @@ export const SCENARIO_CONFIGS = {
   },
   STORM_CENTRAL: {
     id: 'STORM_CENTRAL',
-    label: 'Mưa bão miền Trung & Sạt lở đèo',
-    shortLabel: 'Bão miền Trung',
+    label: 'Thời tiết xấu, Mưa bão & Ngập lụt (Nam Bộ & Toàn quốc)',
+    shortLabel: 'Mưa bão & Ngập lụt',
     icon: 'CloudRain',
-    desc: 'Bão số 3 gây sạt lở đèo Bảo Lộc / QL1A. Tuyến giao hàng từ Lâm Đồng trễ 3 ngày.',
+    desc: 'Mưa lớn, triều cường ngập úng tại TP.HCM/Miền Tây và nguy cơ sạt lở đèo Bảo Lộc. Nguồn cung liên tỉnh trễ 2-3 ngày.',
+    weatherBriefing: 'Cảnh báo thời tiết xấu: Khu vực đang có mưa lớn diện rộng và triều cường ngập úng tại TP.HCM/Miền Tây; các tuyến đèo Lâm Đồng tiềm ẩn nguy cơ sạt lở. Lead time giao hàng trễ 2-3 ngày, cần ưu tiên nhập dự phòng.',
     leadTimeMultiplier: 1.6,
     demandMultiplier: 1.25,
     safetyStockMultiplier: 1.5,
     badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
     accentColor: 'amber',
-    bannerText: '⚠️ CẢNH BÁO BÃO: Sạt lở đèo Bảo Lộc / QL20 gây gián đoạn vận chuyển từ Đà Lạt. Hệ số an toàn đã nâng x1.5.',
+    bannerText: '⚠️ CẢNH BÁO THỜI TIẾT: Mưa lớn, triều cường ngập úng tại Nam Bộ và sạt lở tuyến đèo Đà Lạt. Hệ số an toàn đã nâng x1.5.',
     suggestedQuestions: [
-      'Bão số 3 ảnh hưởng thế nào đến các nhà cung cấp ở Lâm Đồng?',
-      'Cần nhập dự phòng gấp những mặt hàng nào trước khi bão đổ bộ?',
+      'Thời tiết mưa ngập hiện tại ảnh hưởng thế nào đến các tuyến giao hàng?',
+      'Cần nhập dự phòng gấp những mặt hàng nào trước khi ngập úng kéo dài?',
       'Các lô hàng tươi sống có nguy cơ bị đứt gãy trong 3 ngày tới không?',
     ],
   },
@@ -43,6 +45,7 @@ export const SCENARIO_CONFIGS = {
     shortLabel: 'Cuối tuần / Lễ',
     icon: 'Sparkles',
     desc: 'Sức mua bia, nước ngọt, thực phẩm tươi sống dự kiến tăng vọt +35% đến +50%.',
+    weatherBriefing: 'Dự báo cuối tuần thời tiết đẹp, thuận lợi cho hoạt động dã ngoại và mua sắm gia đình. Nhu cầu tiêu thụ bia, nước giải khát và thực phẩm tiệc tươi sống dự kiến tăng đột biến +35% - 50%.',
     leadTimeMultiplier: 1.1,
     demandMultiplier: 1.35,
     safetyStockMultiplier: 1.3,
@@ -85,3 +88,4 @@ export const useScenarioStore = create((set, get) => ({
     }
   },
 }));
+
