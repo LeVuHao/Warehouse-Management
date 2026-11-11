@@ -28,6 +28,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { io } from 'socket.io-client';
 import GlobalDialog from '@/components/GlobalDialog';
 import AICopilotWidget from '@/components/AICopilotWidget';
+import ContextSimulatorBar from '@/components/ContextSimulatorBar';
 
 export default function DashboardLayout({ children }) {
   const { isAuthenticated, isLoading, user, logout } = useAuthStore();
@@ -247,6 +248,9 @@ export default function DashboardLayout({ children }) {
                 <Warehouse className="h-4 w-4 text-cyan-300" />
                 <span>Tổng kho Bách Hóa Xanh</span>
               </div>
+
+              {/* AI Context Simulator */}
+              <ContextSimulatorBar />
             </div>
 
             <div className="flex items-center gap-2">

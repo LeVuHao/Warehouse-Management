@@ -20,12 +20,14 @@ import {
   Zap,
 } from 'lucide-react';
 import api from '@/lib/api';
+import { useScenarioStore } from '@/store/useScenarioStore';
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value || 0));
 
 export default function ReplenishmentPage() {
   const router = useRouter();
+  const { currentScenario, config } = useScenarioStore();
   const [suggestions, setSuggestions] = useState([]);
   const [expanded, setExpanded] = useState({});
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ export default function ReplenishmentPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/inventory/replenishments/suggestions');
+      const res = await api.get(`/inventory/replenishments/suggestions?scenario=${currentScenario}`);
       const list = res.data.suggestions || [];
       setSuggestions(list);
       setExpanded(Object.fromEntries(list.map((item) => [item.supplier_id, true])));
@@ -58,7 +60,7 @@ export default function ReplenishmentPage() {
     setAiError('');
     setShowAiPanel(true);
     try {
-      const res = await api.get('/inventory/replenishments/ai-suggest');
+      const res = await api.get(`/inventory/replenishments/ai-suggest?scenario=${currentScenario}`);
       setAiSuggestions(res.data);
     } catch (err) {
       setAiError(err.response?.data?.error || 'Không thể kết nối Gemini AI. Kiểm tra GEMINI_API_KEY.');
@@ -77,7 +79,8 @@ export default function ReplenishmentPage() {
     let isMounted = true;
     (async () => {
       try {
-        const res = await api.get('/inventory/replenishments/suggestions');
+        setLoading(true);
+        const res = await api.get(`/inventory/replenishments/suggestions?scenario=${currentScenario}`);
         if (!isMounted) return;
         const list = res.data.suggestions || [];
         setSuggestions(list);
@@ -93,7 +96,7 @@ export default function ReplenishmentPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentScenario]);
 
   const createImportDraft = (supplier) => {
     const draft = {
@@ -152,6 +155,24 @@ export default function ReplenishmentPage() {
 
   return (
     <div className="space-y-6">
+      {/* Context Scenario Alert Banner */}
+      {currentScenario !== 'NORMAL' && (
+        <div className="flex items-start gap-3.5 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-900 p-4 text-white shadow-lg backdrop-blur-md">
+          <div className="rounded-xl bg-amber-500/20 p-2 text-amber-400 border border-amber-500/30 flex-shrink-0">
+            <AlertTriangle className="h-5 w-5 animate-bounce" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-amber-300">{config.label}</span>
+              <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-mono text-amber-300 border border-amber-500/30">
+                Lead Time x{config.leadTimeMultiplier} | Sức mua x{config.demandMultiplier} | An toàn x{config.safetyStockMultiplier}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-slate-300 leading-relaxed">{config.bannerText}</p>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-2xl bg-slate-800 p-6 text-white shadow-xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>

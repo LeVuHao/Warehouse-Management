@@ -507,6 +507,11 @@ exports.getBellNotifications = async (req, res) => {
 // GET /api/inventory/replenishments/suggestions
 exports.getReplenishmentSuggestions = async (req, res) => {
   try {
+    const scenario = req.query.scenario || req.headers['x-scenario'] || 'NORMAL';
+    const isStormScenario = scenario === 'STORM_CENTRAL';
+    const isWeekendScenario = scenario === 'WEEKEND_PEAK';
+    const safetyMultiplier = isStormScenario ? 1.5 : (isWeekendScenario ? 1.3 : 1.0);
+
     const lowStockProducts = await prisma.$queryRaw`
       SELECT "product_id"::int, "product_code", "product_name", "unit", "category",
              "current_stock"::int, "min_stock"::int
@@ -516,7 +521,7 @@ exports.getReplenishmentSuggestions = async (req, res) => {
     `;
 
     if (lowStockProducts.length === 0) {
-      return res.json({ suggestions: [], total_suppliers: 0, total_items: 0 });
+      return res.json({ suggestions: [], total_suppliers: 0, total_items: 0, scenario });
     }
 
     const fallbackSupplier = await prisma.supplier.findFirst({ where: { is_active: true }, orderBy: { name: 'asc' } });
@@ -534,9 +539,16 @@ exports.getReplenishmentSuggestions = async (req, res) => {
       if (!supplier) continue;
 
       const shortage = Math.max(0, Number(product.min_stock) - Number(product.current_stock));
-      const suggestedQty = Math.max(shortage, Number(product.min_stock) * 2 - Number(product.current_stock));
+      const safetyBuffer = Math.ceil(Number(product.min_stock) * (safetyMultiplier - 1));
+      const suggestedQty = Math.max(
+        shortage + safetyBuffer,
+        Math.ceil(Number(product.min_stock) * 2 * safetyMultiplier) - Number(product.current_stock)
+      );
       const unitPrice = bestLink ? Number(bestLink.contract_price) : 0;
-      const leadTimeDays = bestLink ? Number(bestLink.lead_time_days || 2) : 2;
+      let leadTimeDays = bestLink ? Number(bestLink.lead_time_days || 2) : 2;
+      if (isStormScenario && (supplier.name.includes('Đà Lạt') || supplier.name.includes('Lâm Đồng') || supplier.name.includes('Trung'))) {
+        leadTimeDays += 3;
+      }
       const estimatedAmount = suggestedQty * unitPrice;
 
       if (!suggestionsBySupplier.has(supplier.id)) {
@@ -793,10 +805,13 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
       orderBy: { id: 'asc' },
     });
 
-    // 5. Xác định bối cảnh Mùa vụ & Chu kỳ ngày trong tuần (Seasonality & Weekend Surge)
+    // 5. Xác định bối cảnh Mùa vụ & Chu kỳ ngày trong tuần (Seasonality & Scenario Injection)
+    const scenario = req.query.scenario || req.headers['x-scenario'] || 'NORMAL';
+    const isStormScenario = scenario === 'STORM_CENTRAL';
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0: CN, 1: T2, ..., 5: T6, 6: T7
     const isWeekendSurge = dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0; // T5 đến CN
+    const isWeekendScenario = scenario === 'WEEKEND_PEAK' || (!isStormScenario && isWeekendSurge);
     const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
     const currentDayName = dayNames[dayOfWeek];
 
@@ -812,9 +827,14 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
         ? Number((exported30d / 30).toFixed(1))
         : Number(Math.max(1, minStock / 10).toFixed(1));
 
-      // Hệ số tăng trưởng nhu cầu theo ngày & mùa vụ
+      // Hệ số tăng trưởng nhu cầu theo ngày & kịch bản ngoại cảnh
       const isFreshOrBeverage = row.category === 'Thực phẩm tươi sống' || row.category === 'Đồ uống và bánh kẹo';
-      const demandMultiplier = (isWeekendSurge && isFreshOrBeverage) ? 1.35 : 1.0;
+      let demandMultiplier = 1.0;
+      if (isStormScenario) {
+        demandMultiplier = 1.35; // Thực phẩm thiết yếu tăng mạnh khi có bão
+      } else if (isWeekendScenario && isFreshOrBeverage) {
+        demandMultiplier = 1.40; // Đồ uống & BBQ cuối tuần
+      }
       const forecastVelocity = Number((baseVelocity * demandMultiplier).toFixed(1));
 
       const bestLink = supplierPrices.find((sp) => sp.product_id === pId);
@@ -823,16 +843,23 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
       const supplierId = bestLink?.supplier_id || recentImport?.import_receipt?.supplier_id || defaultActiveSupplier?.id || 1;
       const supplierName = bestLink?.supplier?.name || recentImport?.import_receipt?.supplier?.name || defaultActiveSupplier?.name || 'Nhà cung cấp đối tác';
       const contractPrice = bestLink ? Number(bestLink.contract_price) : (recentImport ? Number(recentImport.unit_price) : 50000);
-      const leadTimeDays = bestLink?.lead_time_days || 2;
+      
+      let leadTimeDays = bestLink?.lead_time_days || 2;
+      if (isStormScenario && (supplierName.includes('Đà Lạt') || supplierName.includes('Lâm Đồng') || supplierName.includes('Trung'))) {
+        leadTimeDays += 3; // Sạt lở đèo Bảo Lộc trễ 3 ngày
+      } else if (isStormScenario) {
+        leadTimeDays += 1;
+      }
 
-      const safetyStock = Math.ceil(minStock * 0.4);
+      const safetyMultiplier = isStormScenario ? 1.6 : (isWeekendScenario ? 1.3 : 1.0);
+      const safetyStock = Math.ceil(minStock * 0.4 * safetyMultiplier);
       const reorderPoint = Math.ceil((forecastVelocity * leadTimeDays) + safetyStock);
       const runoutDays = forecastVelocity > 0 ? Number((currentStock / forecastVelocity).toFixed(1)) : 999;
 
       const suggestedQty = Math.max(
         shortage,
         reorderPoint - currentStock,
-        Math.ceil(forecastVelocity * 14)
+        Math.ceil(forecastVelocity * (isStormScenario ? 18 : 14))
       );
 
       let priority = 'medium';
@@ -843,8 +870,10 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
       }
 
       let surgeNote = '';
-      if (isWeekendSurge && isFreshOrBeverage) {
-        surgeNote = ` Dự báo cao điểm cuối tuần (${currentDayName}): nhu cầu tăng +35%.`;
+      if (isStormScenario) {
+        surgeNote = ` Cảnh báo Bão số 3 (Sạt lở đèo Bảo Lộc): Lead time +${leadTimeDays - 2} ngày, tồn an toàn nâng x1.6.`;
+      } else if (isWeekendScenario && isFreshOrBeverage) {
+        surgeNote = ` Dự báo cao điểm cuối tuần (${currentDayName}): nhu cầu tăng +40%.`;
       }
 
       return {
@@ -879,9 +908,15 @@ exports.getAiReplenishmentSuggestions = async (req, res) => {
       generated_at: new Date().toISOString(),
       low_stock_count: lowStockRows.length,
       market_context: {
+        scenario,
         current_day: currentDayName,
-        is_weekend_surge: isWeekendSurge,
-        note: isWeekendSurge ? 'Áp dụng hệ số đón đầu cao điểm cuối tuần (+35% cho thực phẩm & đồ uống)' : 'Áp dụng chu kỳ bán hàng ngày thường ổn định',
+        is_weekend_surge: isWeekendScenario,
+        is_storm_scenario: isStormScenario,
+        note: isStormScenario
+          ? 'Áp dụng kịch bản khẩn cấp: Bão số 3 (Sạt lở đèo Bảo Lộc, Lead time +3 ngày, Tồn an toàn x1.6)'
+          : isWeekendScenario
+          ? 'Áp dụng hệ số đón đầu cao điểm cuối tuần (+40% cho thực phẩm & đồ uống)'
+          : 'Áp dụng chu kỳ bán hàng ngày thường ổn định',
       },
       suggestions,
     });

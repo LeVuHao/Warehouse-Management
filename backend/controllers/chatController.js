@@ -3,7 +3,7 @@ const { processChatMessage, getWarehouseOverview, getSupplyChainExternalContext 
 // POST /api/chat — Gửi tin nhắn tới AI Chatbot
 exports.sendMessage = async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, history, scenario } = req.body;
     const user = req.user || { full_name: 'Thủ kho' };
 
     if (!message || typeof message !== 'string') {
@@ -14,6 +14,7 @@ exports.sendMessage = async (req, res) => {
       message,
       history: Array.isArray(history) ? history : [],
       user,
+      scenario: scenario || req.headers['x-scenario'] || 'NORMAL',
     });
 
     return res.json({

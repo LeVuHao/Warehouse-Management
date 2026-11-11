@@ -150,6 +150,46 @@ export default function NewExportPage() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('draft') !== 'liquidation' || products.length === 0) return;
+
+    queueMicrotask(() => {
+      try {
+        const rawDraft = localStorage.getItem('liquidationDraft');
+        if (!rawDraft) return;
+
+        const draft = JSON.parse(rawDraft);
+        if (draft.reason) setReason(draft.reason);
+        if (draft.customerName) setCustomerName(draft.customerName);
+        if (draft.note) setNote(draft.note);
+
+        if (Array.isArray(draft.items) && draft.items.length > 0) {
+          const loadedItems = draft.items.map((it, idx) => {
+            const matchProduct = products.find((p) => String(p.id) === String(it.productId) || p.product_code === String(it.productId));
+            return {
+              _key: `draft-item-${idx + 1}`,
+              productId: matchProduct ? matchProduct.id : (products[0]?.id || ''),
+              productName: matchProduct ? matchProduct.name : it.productName,
+              productCode: matchProduct ? matchProduct.product_code : '',
+              unit: matchProduct ? matchProduct.unit : 'cái',
+              quantity: String(it.quantity || 50),
+              sellingPrice: String(it.sellingPrice || 0),
+              totalAmount: (Number(it.quantity) || 0) * (Number(it.sellingPrice) || 0),
+              importDetailId: it.importDetailId ? Number(it.importDetailId) : '',
+              lots: [],
+              showLots: false,
+            };
+          });
+          setItems(loadedItems);
+        }
+        localStorage.removeItem('liquidationDraft');
+      } catch (err) {
+        console.error('Failed to read liquidationDraft:', err);
+      }
+    });
+  }, [products]);
+
+  useEffect(() => {
     const loadReturnableProducts = async () => {
       if (reason !== 'RETURN' || !supplierId) {
         setReturnableProducts([]);
@@ -361,7 +401,7 @@ export default function NewExportPage() {
     const available = Number(lot.available_lot_stock ?? lot.current_lot_stock ?? 0);
     const price = Number(product?.unit_price || 0);
     const quickItem = {
-      _key: Math.random(),
+      _key: `quick-export-${lot.product_id}-${lot.id || lot.lot_id || 'item'}`,
       productId: lot.product_id,
       productName: lot.product_name,
       productCode: lot.product_code,
